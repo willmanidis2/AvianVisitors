@@ -53,6 +53,14 @@ state = "~/.birdframe/state.json"
 cache = "~/.birdframe"
 timeout = 45
 
+# --- Journal layout (optional) ----------------------------------------------
+# Instead of screenshotting the live collage, render a quiet "journal page"
+# locally: a longhand date header, one grid cell per species heard today
+# (illustrations from the mic's cutout API), and each day's count written in
+# a handwriting script at the bird's lower right. Fonts ship in fonts/
+# (Libre Baskerville + Caveat, both OFL).
+# journal = true
+
 # --- Only if your WHOLE site is behind basic-auth ---------------------------
 # The AvianVisitors default leaves the collage and detection API public, so
 # usually leave these out.

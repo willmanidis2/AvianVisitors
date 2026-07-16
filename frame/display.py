@@ -299,6 +299,14 @@ def in_quiet_hours(cfg, hour):
 
 # --- run --------------------------------------------------------------------
 def obtain_image(cfg, species=None):
+    if cfg.get("journal"):
+        from journal import shoot_journal
+        if species is None:  # gate skipped (--no-signature): fetch the list to render
+            species = fetch_species(cfg, _auth(cfg))
+        out = os.path.join(os.path.expanduser(cfg["cache"]), "journal.png")
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        shoot_journal(cfg["base_url"], out, species, timeout_ms=cfg["timeout"] * 1000)
+        return Image.open(out).convert("RGB")
     if cfg.get("species_source") == "birdweather":
         from shoot import shoot_birdweather
         if species is None:  # gate skipped (--no-signature): fetch the list to render
@@ -351,7 +359,8 @@ def run(cfg, preview=None, force=False, use_signature=True, mat_box=False):
     except Exception as e:
         print(f"could not get image: {e}", file=sys.stderr)  # keep last panel image
         return
-    img = mat_and_center(img, cfg["mat"])
+    if not cfg.get("journal"):  # journal pages arrive composed at panel size
+        img = mat_and_center(img, cfg["mat"])
     if preview:
         out = quantize_spectra6(img)
         if mat_box:
