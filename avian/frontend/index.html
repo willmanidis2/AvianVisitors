@@ -118,6 +118,32 @@
       <div class="atlas-grid" id="atlasGrid"></div>
     </section>
 
+    <!-- ========== View 4 - Analytics ========== -->
+    <section class="view" id="v3" aria-label="Analytics">
+      <div class="ana-grid">
+        <div class="grp ana-rhythm">
+          <h3>The Day's Rhythm</h3>
+          <small>detections by hour — today in ink, the week's average behind</small>
+          <div class="ana-plot" id="anaRhythm"></div>
+        </div>
+        <div class="grp ana-bars">
+          <h3>Who's Been Loud</h3>
+          <small id="anaBarsCap">most heard, current window</small>
+          <div class="ana-plot" id="anaBars"></div>
+        </div>
+        <div class="grp ana-variety">
+          <h3>Variety</h3>
+          <small>distinct species per day, last 30 days</small>
+          <div class="ana-plot" id="anaVariety"></div>
+        </div>
+        <div class="grp ana-ledger">
+          <h3>Records</h3>
+          <small>the station's small superlatives</small>
+          <ol id="anaLedger"></ol>
+        </div>
+      </div>
+    </section>
+
   </div>
 </main>
 
@@ -199,6 +225,7 @@
   <button type="button" data-i="0" aria-current="true">collage</button>
   <button type="button" data-i="1">stats</button>
   <button type="button" data-i="2">atlas</button>
+  <button type="button" data-i="3">analytics</button>
 </nav>
 
 

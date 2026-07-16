@@ -42,7 +42,7 @@ RAW_ILLUSTRATIONS = ("https://raw.githubusercontent.com/Twarner491/AvianVisitors
 # stay. Injected before first paint.
 HIDE_CSS = """
   .top, .slider, .return-to-atlas, #menu-dd, #detail-modal, #about-modal,
-  .admin-screen, #collageTip, .modal-backdrop, #v1, #v2 { display: none !important; }
+  .admin-screen, #collageTip, .modal-backdrop, #v1, #v2, #v3 { display: none !important; }
   .views { transform: none !important; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html, body { background: var(--paper, #efece0) !important; }

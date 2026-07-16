@@ -1614,3 +1614,60 @@
  * See avian/forwarding/. */
 body.av-local #dd-locked { display: none; }
 body.av-local #dd-items  { display: block; }
+
+/* ============ Analytics view (#v3) ============
+   Same materials as the stats view: mono ticks, hairline rules, ink lines
+   on paper. All colors via the theme variables so dark mode just works. */
+.ana-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 44px;
+            max-width: 1080px; margin: 0 auto; padding-top: 6px; }
+.ana-rhythm { grid-column: 1 / -1; }
+.ana-grid .grp h3 { font: 700 10px ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--ink);
+  border-left: 2px solid var(--accent); padding-left: 10px; margin: 0; }
+.ana-grid .grp small { display: block; margin-top: 5px; font: 400 9px ui-monospace, Menlo, monospace;
+  letter-spacing: .06em; color: var(--ink-soft); }
+.ana-plot { position: relative; margin-top: 16px; }
+.ana-rhythm .ana-plot { height: 216px; }
+.ana-variety .ana-plot { height: 156px; }
+.ana-bars .ana-plot { height: 236px; }
+.ana-svg { position: absolute; left: 26px; right: 0; top: 0; bottom: 18px;
+           width: calc(100% - 26px); height: calc(100% - 18px); overflow: visible; }
+.ana-svg .grid { stroke: var(--hairline); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.ana-svg .ln-today, .ana-svg .ln-var { fill: none; stroke: var(--ink);
+  stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ana-svg .ln-avg { fill: none; stroke: var(--ink-soft); stroke-width: 1.1;
+  stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.ana-ytick, .ana-xtick { position: absolute; font: 400 7.5px "SF Mono", Menlo, monospace;
+  color: var(--ink-soft); letter-spacing: .04em; }
+.ana-ytick { left: 0; transform: translateY(50%); }
+.ana-xtick { bottom: 0; transform: translateX(-50%); white-space: nowrap; }
+/* bar columns: bird cutout perched on its bar */
+.ana-cols { position: absolute; inset: 0 0 18px 26px; display: flex;
+            align-items: flex-end; gap: 12px; }
+.ana-col { flex: 1 1 0; min-width: 0; height: 100%; display: flex;
+           flex-direction: column; align-items: center; justify-content: flex-end; }
+.ana-col img { width: 78%; max-height: 58px; object-fit: contain;
+               object-position: bottom; margin-bottom: 5px; }
+.ana-col i { display: block; width: 56%; background: var(--ink-2); border-radius: 1px; }
+.ana-col .n { font: 400 8px "SF Mono", Menlo, monospace; color: var(--ink-soft); margin-top: 5px; }
+.ana-col .nm { font: 400 8px "SF Mono", Menlo, monospace; letter-spacing: .04em;
+  color: var(--ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; margin-top: 2px; }
+/* ledger rows */
+.ana-ledger ol { list-style: none; margin: 14px 0 0; padding: 0; }
+.ana-ledger li { display: flex; gap: 12px; align-items: baseline; padding: 8px 2px;
+  border-bottom: 1px solid var(--hairline); font-size: 13.5px; color: var(--ink); }
+.ana-ledger li .k { font: 400 8px ui-monospace, Menlo, monospace; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-soft); flex: 0 0 118px; }
+.ana-empty { font-style: italic; color: var(--ink-soft); font-size: 13px; padding: 18px 0; }
+@media (max-width: 700px) {
+  .ana-grid { grid-template-columns: 1fr; gap: 26px; }
+  .ana-ledger li .k { flex-basis: 96px; }
+}
+/* analytics polish: bars are jump-to-atlas affordances like every other
+   data-sci element; mobile reclaims the unused y-axis strip for the bars */
+.ana-col { cursor: pointer; }
+@media (max-width: 700px) {
+  .ana-cols { inset: 0 0 18px 0; gap: 7px; }
+  .ana-col .nm { white-space: normal; line-height: 1.15; max-height: 2.3em; }
+}

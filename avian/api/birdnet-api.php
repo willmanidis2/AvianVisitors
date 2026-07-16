@@ -184,6 +184,40 @@ switch ($action) {
         break;
     }
 
+    case 'rhythm': {
+        // Hour-by-hour pulse for the analytics view: today's detections per
+        // hour, next to the per-hour average over the previous $days days.
+        // The average divides by days actually present in the window, so a
+        // young station's mornings aren't diluted by days it wasn't running.
+        $days = max(1, min(30, (int)($_GET['days'] ?? 7)));
+        $today = rows($db,
+          "SELECT CAST(strftime('%H', Time) AS INT) AS hour, COUNT(*) AS detections "
+        . "FROM detections WHERE Date = DATE('now','localtime') "
+        . "GROUP BY hour ORDER BY hour"
+        );
+        $dc = one($db,
+          "SELECT COUNT(DISTINCT Date) AS d FROM detections "
+        . "WHERE Date >= DATE('now','localtime','-".$days." day') "
+        . "AND Date < DATE('now','localtime')"
+        );
+        $den = max(1, (int)($dc['d'] ?? 0));
+        $avg = rows($db,
+          "SELECT CAST(strftime('%H', Time) AS INT) AS hour, "
+        . "       ROUND(COUNT(*) * 1.0 / ".$den.", 2) AS avg "
+        . "FROM detections "
+        . "WHERE Date >= DATE('now','localtime','-".$days." day') "
+        . "AND Date < DATE('now','localtime') "
+        . "GROUP BY hour ORDER BY hour"
+        );
+        echo json_encode([
+            'days'  => $days,
+            'today' => $today,
+            'avg'   => $avg,
+            'as_of' => date('c'),
+        ]);
+        break;
+    }
+
     default:
         http_response_code(404);
         echo json_encode(['error' => 'unknown action']);

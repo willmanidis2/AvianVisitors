@@ -56,7 +56,7 @@
   // Each view's title text. The shared static-head shows one of these
   // based on the current view; identical adjacent values mean the title
   // stays put with no fade (collage and stats both say Heard Recently).
-  var VIEW_TITLES = ['Heard Recently', 'Heard Recently', 'Avian Visitors'];
+  var VIEW_TITLES = ['Heard Recently', 'Heard Recently', 'Avian Visitors', 'Patterns'];
   var staticHead = document.querySelector('.static-head');
   var staticTitle = document.getElementById('staticTitle');
   function setTitleForView(i) {
@@ -85,7 +85,7 @@
   var STATS_LEAD = SLIDE_MS - 200;    // stats - begin a touch sooner
   var currentView = 0;                // collage shows first (no go() needed)
   function go(i) {
-    i = Math.max(0, Math.min(2, i));
+    i = Math.max(0, Math.min(3, i));
     // Only a genuine view *switch* replays the entrance. go() also fires when
     // a card is expanded (it sets the #sci= hash, which routes through go(2))
     // while already on the atlas - that must not retrigger the load-in.
@@ -101,6 +101,7 @@
     if (i === 0) playCollageEntrance();
     else if (i === 1) playStatsEntrance(STATS_LEAD);
     else if (i === 2) playAtlasEntrance(SWITCH_LEAD);
+    else if (i === 3) playAnaEntrance(SWITCH_LEAD);
   }
   btns.forEach(function (b) { b.addEventListener('click', function () { go(+b.dataset.i); }); });
 
@@ -1346,6 +1347,161 @@
     if (animate) playAtlasEntrance();
   }
 
+  // ---- Analytics view (#v3) ----
+  // Three hand-rolled charts plus a small ledger, built from the same DATA
+  // the other views use (plus action=rhythm). Same idiom as the stats view:
+  // innerHTML strings, mono ticks, hairline rules; the SVG paths carry class
+  // hooks so styles.css owns every color and both themes just work.
+  function anaFmtHour(h) { return (h < 10 ? '0' + h : '' + h) + ':00'; }
+  function anaPath(pts) {
+    return pts.map(function (p, i) {
+      return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2);
+    }).join(' ');
+  }
+  // Shared line-chart builder: values -> svg + ticks inside a .ana-plot.
+  // ys: array of {cls, vals} series drawn back-to-front; x labels sparse.
+  function anaLineChart(host, series, xLabels, yMax) {
+    var W = 100, H = 42, PADB = 2;
+    var grid = '', yt = '', xt = '';
+    // Integer tick values (~4 of them) so low maxima never produce duplicate
+    // labels; positioned in the same coordinate box as the SVG (which is
+    // inset 26px left / 18px bottom for the axis strips).
+    var step = Math.max(1, Math.ceil(yMax / 4));
+    for (var v = step; v <= yMax; v += step) {
+      var f = v / yMax;
+      grid += '<path class="grid" d="M0 ' + ((H - PADB) * (1 - f)).toFixed(2) + ' H' + W + '"/>';
+      yt += '<span class="ana-ytick" style="bottom:calc(18px + (100% - 18px) * ' +
+        ((PADB + f * (H - PADB)) / H).toFixed(4) + ')">' + fmtN(v) + '</span>';
+    }
+    var paths = series.map(function (s) {
+      var span = s.span || 1;   // fraction of the x-domain the series covers
+      var pts = s.vals.map(function (v, i) {
+        var fx = s.vals.length > 1 ? i / (s.vals.length - 1) : 0;
+        return [fx * W * span, (H - PADB) * (1 - Math.min(1, v / yMax))];
+      });
+      return '<path class="' + s.cls + '" d="' + anaPath(pts) + '"/>';
+    }).join('');
+    xLabels.forEach(function (l) {
+      xt += '<span class="ana-xtick" style="left:calc(26px + (100% - 26px) * ' + (l.f).toFixed(3) + ')">' + l.text + '</span>';
+    });
+    host.innerHTML =
+      '<svg class="ana-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+      grid + paths + '</svg>' + yt + xt;
+  }
+  function renderRhythm() {
+    var host = document.getElementById('anaRhythm');
+    if (!host) return;
+    var r = DATA.rhythm;
+    if (!r || (!(r.today || []).length && !(r.avg || []).length)) {
+      host.innerHTML = '<div class="ana-empty">nothing to chart yet</div>'; return;
+    }
+    var today = [], avg = [], h;
+    for (h = 0; h < 24; h++) { today[h] = 0; avg[h] = 0; }
+    (r.today || []).forEach(function (x) { today[x.hour] = x.detections; });
+    (r.avg || []).forEach(function (x) { avg[x.hour] = x.avg; });
+    var yMax = Math.max(1, Math.max.apply(null, today.concat(avg)));
+    // Draw today's line only through the current hour - hours that haven't
+    // happened yet aren't zeros, they just haven't happened.
+    var nowH = new Date().getHours();
+    anaLineChart(host,
+      [{ cls: 'ln-avg', vals: avg },
+       { cls: 'ln-today', vals: today.slice(0, nowH + 1), span: Math.max(0.001, nowH / 23) }],
+      [0, 6, 12, 18, 23].map(function (hh) { return { f: hh / 23, text: anaFmtHour(hh) }; }),
+      yMax);
+  }
+  function renderVariety() {
+    var host = document.getElementById('anaVariety');
+    if (!host) return;
+    var ts = DATA.timeseries;
+    if (!ts || !(ts.daily || []).length) {
+      host.innerHTML = '<div class="ana-empty">nothing to chart yet</div>'; return;
+    }
+    var daily = backfillDaily(ts.daily, ts.days || 30);
+    var vals = daily.map(function (d) { return d.species || 0; });
+    var yMax = Math.max(1, Math.max.apply(null, vals));
+    var n = daily.length;
+    // backfillDaily rows carry no date field; the window always ends today,
+    // so derive each label's date from its index.
+    var labels = [0, Math.floor((n - 1) / 2), n - 1].map(function (i) {
+      var d = new Date(); d.setDate(d.getDate() - (n - 1 - i));
+      return { f: n > 1 ? i / (n - 1) : 0, text: pad(d.getMonth() + 1) + '-' + pad(d.getDate()) };
+    });
+    anaLineChart(host, [{ cls: 'ln-var', vals: vals }], labels, yMax);
+  }
+  function renderAnaBars() {
+    var host = document.getElementById('anaBars');
+    if (!host) return;
+    var species = (DATA.recent && DATA.recent.species || []).slice()
+      .sort(function (a, b) { return b.n - a.n; }).slice(0, 8);
+    var cap = document.getElementById('anaBarsCap');
+    if (cap) cap.textContent = 'most heard, ' + windowLabel(currentHours).toLowerCase();
+    if (!species.length) {
+      host.innerHTML = '<div class="ana-empty">no birds in this window</div>'; return;
+    }
+    var max = Math.max(1, species[0].n);
+    host.innerHTML = '<div class="ana-cols">' + species.map(function (s) {
+      // Sub-linear (^0.6) height like the collage's area scaling: keeps a
+      // 25-call bird visible beside a 675-call one; the printed count stays
+      // the honest number.
+      var pct = Math.max(3, Math.round(Math.pow(s.n / max, 0.6) * 62));
+      return '<div class="ana-col" data-sci="' + s.sci + '" title="' + s.com + '">' +
+        '<img src="' + sketchSrc(s.sci) + '" alt="" loading="lazy">' +
+        '<i style="height:' + pct + '%"></i>' +
+        '<span class="n">' + fmtN(s.n) + '</span>' +
+        '<span class="nm">' + s.com + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function renderAnaLedger() {
+    var host = document.getElementById('anaLedger');
+    if (!host) return;
+    var rows = [];
+    var r = DATA.rhythm, st = DATA.stats, ts = DATA.timeseries, fs = DATA.firstseen;
+    if (r && (r.today || []).length) {
+      var peak = r.today.reduce(function (a, b) { return b.detections > a.detections ? b : a; });
+      rows.push(['peak hour today', anaFmtHour(peak.hour) + ' · ' + fmtN(peak.detections) + ' calls']);
+    }
+    if (st && st.today && st.totals) {
+      rows.push(['species today', fmtN(st.today.species) + ' of ' + fmtN(st.totals.species) + ' all-time']);
+      rows.push(['calls today', fmtN(st.today.detections)]);
+    }
+    if (ts && (ts.daily || []).length) {
+      var busiest = ts.daily.reduce(function (a, b) { return b.detections > a.detections ? b : a; });
+      rows.push(['busiest day, last 30', busiest.date + ' · ' + fmtN(busiest.detections) + ' calls']);
+    }
+    if (fs && (fs.species || []).length) {
+      var nw = fs.species[0];
+      rows.push(['newest arrival', nw.com + ' · ' + (nw.first_seen || '').slice(0, 10)]);
+    }
+    host.innerHTML = rows.map(function (kv) {
+      return '<li><span class="k">' + kv[0] + '</span><span class="v">' + kv[1] + '</span></li>';
+    }).join('') || '<li><span class="v ana-empty">nothing yet</span></li>';
+  }
+  function renderAnalytics() {
+    renderRhythm();
+    renderAnaBars();
+    renderVariety();
+    renderAnaLedger();
+  }
+  var anaEntranceT = null;
+  function playAnaEntrance(lead) {
+    var els = [].slice.call(document.querySelectorAll('#v3 .grp'));
+    if (!els.length) return;
+    els.forEach(function (el) {
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(8px)';
+    });
+    clearTimeout(anaEntranceT);
+    anaEntranceT = setTimeout(function () {
+      void document.getElementById('v3').offsetWidth;
+      els.forEach(function (el, i) {
+        el.style.transition = 'opacity 480ms ease ' + (i * 90) + 'ms, transform 480ms ease ' + (i * 90) + 'ms';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+    }, lead || 0);
+  }
+
   function renderWindowDependent(animate) {
     // renderStatsLists runs BEFORE drawHistograms so the stats entrance
     // (fired at the end of drawHistograms) can stagger the side-panel rows
@@ -1354,12 +1510,14 @@
     renderStatsLists();
     drawHistograms(animate);
     renderAtlas(animate);
+    renderAnalytics();
   }
   function renderTimeIndependent(animate) {
     // Lists first, then the graph (see renderWindowDependent).
     renderStatsLists();
     drawHistograms(animate);
     renderAtlas(animate);
+    renderAnalytics();
   }
 
   function refreshRecent(animate) {
@@ -1383,11 +1541,13 @@
       fetchJson('./avian/api/birdnet-api.php?action=timeseries&days=30').catch(function () { return null; }),
       fetchJson('./avian/api/birdnet-api.php?action=firstseen&limit=10').catch(function () { return null; }),
       fetchJson('./avian/api/birdnet-api.php?action=recent&hours=' + forHours).catch(function () { return null; }),
+      fetchJson('./avian/api/birdnet-api.php?action=rhythm&days=7').catch(function () { return null; }),
     ]).then(function (parts) {
       DATA.stats = parts[0];
       DATA.lifelist = parts[1];
       DATA.timeseries = parts[2];
       DATA.firstseen = parts[3];
+      if (parts[5]) DATA.rhythm = parts[5];
       // Only accept the recent slice if the window hasn't changed
       // since this poll started - otherwise keep what's there.
       if (forHours === currentHours && parts[4]) DATA.recent = parts[4];
@@ -3078,6 +3238,8 @@
     if (row) return jumpToSci(row.dataset.sci);
     var tlCol = ev.target.closest('.stats-tl-col[data-sci]');
     if (tlCol) return jumpToSci(tlCol.dataset.sci);
+    var anaCol = ev.target.closest('.ana-col[data-sci]');
+    if (anaCol) return jumpToSci(anaCol.dataset.sci);
   });
 
   // After the atlas re-renders (window change, fresh fetch), re-apply
